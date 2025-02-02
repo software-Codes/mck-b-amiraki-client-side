@@ -1,7 +1,7 @@
 {
-    "name": "React Native with Expo",
+    "name": "church-app",
     "build": {
-      "dockerfile": "Dockerfile"
+      "dockerfile": "Dockerfile.dev"
     },
     "features": {
       "ghcr.io/devcontainers/features/git:1": {},
