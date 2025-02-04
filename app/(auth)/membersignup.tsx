@@ -37,7 +37,7 @@ const MemberSignup = () => {
 
     const validateField = (fieldName: keyof FormData, value: string) => {
         let error = '';
-        
+
         if (!value.trim()) {
             error = `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`;
         } else {
@@ -61,7 +61,7 @@ const MemberSignup = () => {
                     break;
             }
         }
-        
+
         setErrors(prev => ({ ...prev, [fieldName]: error }));
         return error;
     };
@@ -104,113 +104,108 @@ const MemberSignup = () => {
         }
     };
 
-  return (
-    <ScrollView 
-    className="flex-1 bg-white" 
-    contentContainerStyle={{ flexGrow: 1 }}
-    keyboardShouldPersistTaps="handled"
->
-      <View className="flex-1 bg-white">
-        <View className="relative w-full h-[250px] overflow-hidden">
-          <Image
-            source={images.membersignup}
-            className="w-full h-full object-cover"
-          />
-          <Text className="text-3xl font-jakartaSemiBold text-white absolute left-5 bottom-5">
-            {isAdmin ? "Admin Registration" : "Member Registration"}
-          </Text>
-        </View>
+    return (
+        <ScrollView
+            className="flex-1 bg-white"
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+        >
+            <View className="flex-1 bg-white">
+                <View className="relative w-full h-[250px] bg-primary-500 overflow-hidden">
+                    <Image
+                        source={images.membersignup}
+                        className="w-full h-full opacity-50 object-cover"
+                    />
+                    <Text className="text-3xl font-jakartaSemiBold text-white absolute left-5 bottom-5">
+                        {isAdmin ? "Admin Registration" : "Member Registration"}
+                    </Text>
+                </View>
 
-        <View className="px-4 py-6">
-          <InputField
-            label="Full Name"
-            icon={icons.person}
-            value={form.fullName}
-            onChangeText={(text) => handleChange("fullName", text)}
-            onBlur={() => handleBlur("fullName")}
-            error={errors.fullName}
-            touched={touched.fullName}
-            required
-            placeholder="Enter your full name"
-          />
-          <InputField
-            label="Email"
-            icon={icons.email}
-            value={form.email}
-            keyboardType="email-address"
-            onChangeText={(text) => handleChange("email", text)}
-            onBlur={() => handleBlur("email")}
-            error={errors.email}
-            touched={touched.email}
-            required
-            placeholder="Enter your email"
-            autoCapitalize="none"
-          />
-          <InputField
-            label="Password"
-            icon={icons.lock}
-            secureTextEntry
-            value={form.password}
-            onChangeText={(text) => handleChange("password", text)}
-            onBlur={() => handleBlur("password")}
-            error={errors.password}
-            touched={touched.password}
-            required
-            placeholder="Enter your password"
-            autoCapitalize="none"
-          />
-          <InputField
-            label="Phone Number"
-            icon={icons.dollar}
-            keyboardType="phone-pad"
-            value={form.phoneNumber}
-            onChangeText={(text) => handleChange("phoneNumber", text)}
-            onBlur={() => handleBlur("phoneNumber")}
-            error={errors.phoneNumber}
-            touched={touched.phoneNumber}
-            required
-            placeholder="Enter your phone number"
-          />
+                <View className="px-4 py-6">
+                    {/* Input Fields with Error Styling */}
+                    <InputField
+                        label="Full Name"
+                        icon={icons.person}
+                        value={form.fullName}
+                        onChangeText={(text) => handleChange("fullName", text)}
+                        onBlur={() => handleBlur("fullName")}
+                        error={errors.fullName}
+                        touched={touched.fullName}
+                        required
+                        placeholder="Enter your full name"
+                    />
+                    <InputField
+                        label="Email"
+                        icon={icons.email}
+                        value={form.email}
+                        keyboardType="email-address"
+                        onChangeText={(text) => handleChange("email", text)}
+                        onBlur={() => handleBlur("email")}
+                        error={errors.email}
+                        touched={touched.email}
+                        required
+                        placeholder="Enter your email"
+                        autoCapitalize="none"
+                    />
+                    <InputField
+                        label="Password"
+                        icon={icons.lock}
+                        secureTextEntry
+                        value={form.password}
+                        onChangeText={(text) => handleChange("password", text)}
+                        onBlur={() => handleBlur("password")}
+                        error={errors.password}
+                        touched={touched.password}
+                        required
+                        placeholder="Enter your password"
+                        autoCapitalize="none"
+                    />
+                    <InputField
+                        label="Phone Number"
+                        icon={icons.profile}
+                        keyboardType="phone-pad"
+                        value={form.phoneNumber}
+                        onChangeText={(text) => handleChange("phoneNumber", text)}
+                        onBlur={() => handleBlur("phoneNumber")}
+                        error={errors.phoneNumber}
+                        touched={touched.phoneNumber}
+                        required
+                        placeholder="Enter your phone number"
+                    />
 
-          <TouchableOpacity
-            className="flex-row items-center mt-4 p-2 rounded-lg bg-neutral-100"
-            onPress={() => setIsAdmin(!isAdmin)}
-          >
-            <View
-              className={`w-5 h-5 border rounded-md mr-2 
-                            ${isAdmin ? "bg-primary-500 border-primary-500" : "border-neutral-400"}`}
-            >
-              {isAdmin && (
-                <Image
-                  source={icons.star}
-                  className="w-full h-full tint-white"
-                />
-              )}
+                    {/* Admin Registration Link-like Toggle */}
+                    <TouchableOpacity
+                        className="mt-4 flex-row items-center"
+                        onPress={() => setIsAdmin(!isAdmin)}
+                    >
+                        <Text className="text-primary-500 font-jakartaMedium underline">
+                            {isAdmin
+                                ? "Switch to Member Registration"
+                                : "Register as Admin"
+                            }
+                        </Text>
+                    </TouchableOpacity>
+
+                    <CustomButton
+                        title="Register"
+                        className={`mt-6 p-4 rounded-xl ${!isFormValid ? 'opacity-50' : ''}`}
+                        bgVariant="primary"
+                        disabled={!isFormValid}
+                        onPress={handleSubmit}
+                    />
+
+                    <TouchableOpacity
+                        className="mt-4"
+                        onPress={() => router.push("/(auth)/sign-in")}
+                    >
+                        <Text className="text-center text-primary-500 font-jakartaMedium underline">
+                            Already have an account? Login
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-            <Text className="font-jakartaMedium text-neutral-600">
-              Register as Admin
-            </Text>
-          </TouchableOpacity>
-
-          <CustomButton
-                title="Register"
-                className={`mt-6 p-4 rounded-xl ${!isFormValid ? 'opacity-50' : ''}`}
-                bgVariant="primary"
-                disabled={!isFormValid}
-                onPress={handleSubmit}
-            />
-          <TouchableOpacity
-            className="mt-4"
-            onPress={() => router.push("/(auth)/sign-in")}
-          >
-            <Text className="text-center text-primary-500 font-jakartaMedium underline">
-              Already have an account? Login
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
-  );
+        </ScrollView>
+    );
 };
 
 export default MemberSignup;

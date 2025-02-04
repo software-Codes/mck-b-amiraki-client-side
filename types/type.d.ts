@@ -7,6 +7,7 @@ interface ButtonProps extends TouchableOpacityProps {
     className?: string;
     onPress?: () => void;
     size?: "sm" | "md" | "lg";
+    disabled?: boolean;
 }
 interface InputFieldProps extends TextInputProps {
     label: string;
@@ -25,6 +26,6 @@ interface InputFieldProps extends TextInputProps {
     keyboardType?: string;
     value: string;
     onChangeText: (text: string) => void;
-    disabled?: boolean; 
+
 
 }
