@@ -64,7 +64,7 @@ const Onboarding = () => {
               style={{
                 width: width * 0.8,
                 height: height * 0.4,
-                maxHeight: 400
+                maxHeight: 600
               }}
               resizeMode="contain"
             />
