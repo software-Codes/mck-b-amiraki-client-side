@@ -31,6 +31,7 @@ import onboarding1 from "@/assets/images/onboarding1.jpg";
 import onboarding2 from "@/assets/images/onboarding2.jpg";
 import onboarding3 from "@/assets/images/onboarding3.jpg";
 import membersignup from "../assets/images/membersignup.jpg";
+import login from "@/assets/images/login.jpg";
 
 export const images = {
   onboarding1,
@@ -41,6 +42,7 @@ export const images = {
   check,
   noResult,
   message,
+    login,
 };
 
 export const icons = {

@@ -97,7 +97,7 @@ const Onboarding = () => {
           title={isLastSlide ? "Get Started" : "Next"}
           onPress={() =>
             isLastSlide
-              ? router.replace("/(auth)/sign-up")
+              ? router.replace("/(auth)/membersignup")
               : swiperRef.current?.scrollBy(1)
           }
           className="w-full max-w-xl p-4"

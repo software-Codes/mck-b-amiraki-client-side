@@ -1,57 +1,95 @@
 import {
-    KeyboardAvoidingView,
-    TouchableWithoutFeedback,
-    View,
-    Text,
-    Platform,
-    Keyboard,
-    TextInput,
-    Image,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  View,
+  Text,
+  Platform,
+  Keyboard,
+  Image,
+  TextInput,
+  KeyboardTypeOptions,
+  TextInputProps,
+  NativeSyntheticEvent,
+  TextInputFocusEventData
 } from "react-native";
+import { useState } from "react";
+
+interface InputFieldProps extends Omit<TextInputProps, 'onChangeText'> {
+  label: string;
+  icon?: any;
+  labelStyle?: string;
+  containerStyle?: string;
+  inputStyle?: string;
+  iconStyle?: string;
+  className?: string;
+  error?: string;
+  touched?: boolean;
+  required?: boolean;
+  onChangeText: (text: string) => void;
+}
 
 const InputField = ({
-                        label,
-                        labelStyle,
-                        icon,
-                        secureTextEntry = false,
-                        containerStyle,
-                        inputStyle,
-                        iconStyle,
-                        className,
-                        error,
-                        touched,
-                        required,
-                        ...props
-                    }: InputFieldProps) => {
-    return (
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View className={`my-2 w-full px-5 ${containerStyle}`}>
-                    <Text className={`text-lg font-jakartaSemiBold mb-3 ${labelStyle}`}>
-                        {label} {required && <Text className="text-red-500">*</Text>}
-                    </Text>
-                    <View className="flex-row items-center border border-gray-300 rounded-lg p-3">
-                        {icon && (
-                            <Image
-                                source={icon}
-                                className={`w-5 h-5 mr-2 ${iconStyle}`}
-                                resizeMode="contain"
-                            />
-                        )}
-                        <TextInput
-                            className={`flex-1 font-jakartaRegular text-base ${inputStyle}`}
-                            secureTextEntry={secureTextEntry}
-                            placeholderTextColor="#666"
-                            {...props}
-                        />
-                    </View>
-                    {touched && error && (
-                        <Text className="text-red-500 text-sm mt-1">{error}</Text>
-                    )}
-                </View>
-            </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-    );
+  label,
+  labelStyle,
+  icon,
+  secureTextEntry = false,
+  containerStyle,
+  inputStyle,
+  iconStyle,
+  className,
+  error,
+  touched,
+  onChangeText,
+  required,
+  ...props
+}: InputFieldProps) => {
+  const [isFocused, setIsFocused] = useState(false);
+
+  const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+      setIsFocused(false);
+      props.onBlur?.(e);
+  };
+
+  return (
+      <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className={`w-full mb-4 ${containerStyle || ''}`}
+      >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View className="w-full">
+                  <Text className={`text-base font-jakartaSemiBold mb-2 ${labelStyle || ''}`}>
+                      {label} {required && <Text className="text-danger-500">*</Text>}
+                  </Text>
+                  <View className={`
+                      flex-row items-center
+                      bg-neutral-100 rounded-lg
+                      border-2 ${isFocused ? 'border-primary-500' : 'border-neutral-200'}
+                      ${error && touched ? 'border-danger-500' : ''}
+                      ${className || ''}
+                  `}>
+                      {icon && (
+                          <Image
+                              source={icon}
+                              className={`w-5 h-5 ml-4 ${iconStyle || ''}`}
+                          />
+                      )}
+                      <TextInput
+                          className={`py-3 px-4 font-jakartaMedium text-base flex-1 ${inputStyle || ''}`}
+                          secureTextEntry={secureTextEntry}
+                          onFocus={() => setIsFocused(true)}
+                          onBlur={handleBlur}
+                          onChangeText={onChangeText}
+                          placeholderTextColor="#9CA3AF"
+                          {...props}
+                      />
+                  </View>
+                  {error && touched && (
+                      <Text className="text-danger-500 text-sm mt-1">{error}</Text>
+                  )}
+              </View>
+          </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+  );
 };
 
 export default InputField;

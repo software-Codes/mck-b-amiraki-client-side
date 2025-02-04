@@ -1,14 +1,14 @@
-declare interface ButtonProps extends TouchableOpacityProps {
-    
+interface ButtonProps extends TouchableOpacityProps {
     title: string;
     bgVariant?: "primary" | "secondary" | "danger" | "outline" | "success";
     textVariant?: "primary" | "default" | "secondary" | "danger" | "success";
     IconLeft?: React.ComponentType<any>;
     IconRight?: React.ComponentType<any>;
     className?: string;
-    onPress?: () => void; 
+    onPress?: () => void;
+    size?: "sm" | "md" | "lg";
 }
-declare interface InputFieldProps extends TextInputProps {
+interface InputFieldProps extends TextInputProps {
     label: string;
     icon?: any;
     secureTextEntry?: boolean;
@@ -20,13 +20,11 @@ declare interface InputFieldProps extends TextInputProps {
     error?: string;
     touched?: boolean;
     required?: boolean;
-}
+    type?: "text" | "email" | "password" | "phone" | "number";
+    isAdmin?: boolean;
+    keyboardType?: string;
+    value: string;
+    onChangeText: (text: string) => void;
+    disabled?: boolean; 
 
-declare interface ButtonProps extends TouchableOpacityProps {
-    title: string;
-    bgVariant?: "primary" | "secondary" | "danger" | "outline" | "success";
-    textVariant?: "primary" | "default" | "secondary" | "danger" | "success";
-    IconLeft?: React.ComponentType<any>;
-    IconRight?: React.ComponentType<any>;
-    className?: string;
 }
