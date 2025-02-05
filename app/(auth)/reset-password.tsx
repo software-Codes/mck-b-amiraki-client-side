@@ -1,12 +1,12 @@
 import {SafeAreaView} from "react-native-safe-area-context";
 import {Text} from "react-native";
 
-const AdminSignup =() => {
-    return (
+const ResetPassword =() => {
+    return(
         <SafeAreaView>
-            <Text>Admin Signup</Text>
+            <Text>
+                Reset Password
+            </Text>
         </SafeAreaView>
-    );
+    )
 }
-
-export default AdminSignup;
