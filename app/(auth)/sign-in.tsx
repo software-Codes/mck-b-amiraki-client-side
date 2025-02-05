@@ -122,19 +122,17 @@ const SignIn = () => {
                             resizeMode="cover"
                         />
                     </View>
-
-                    {/* Welcome Text Container */}
-                    <View className="absolute inset-0 flex items-center font-jakartaBold justify-end px-6">
-                        <View className="space-y-2 items-center">
-                            <Text className="text-4xl font-jakartaBold text-primary-600">
-                                Welcome Back
-                            </Text>
-                            <Text className="text-2xl font-jakartaMedium text-primary-500">
-                                provide your credentials to continue
-                            </Text>
-                        </View>
-                    </View>
                 </View>
+
+            <View>
+
+                <Text className="text-4xl font-jakartaBold text-primary-600 mb-8 text-center">
+                    Sign In
+                </Text>
+                <Text className="text-primary-500 font-jakartaSemiBold text-center text-2xl" >
+                    Welcome back! Sign in to continue
+                </Text>
+            </View>
 
                 <View className="px-6 py-8 flex-1">
                     <View className="space-y-4">

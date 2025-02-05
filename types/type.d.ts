@@ -29,3 +29,12 @@ interface InputFieldProps extends TextInputProps {
 
 
 }
+
+interface PasswordValidation {
+    minLength: boolean;
+    hasUppercase: boolean;
+    hasLowercase: boolean;
+    hasNumber: boolean;
+    hasSpecialChar: boolean;
+    matches: boolean;
+}
