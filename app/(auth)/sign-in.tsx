@@ -4,6 +4,7 @@ import InputField from "@/components/InputField";
 import CustomButton from "@/components/CustomButton";
 import { router } from "expo-router";
 import { useState, useMemo } from "react";
+import { loginUser } from "@/actions/sign-in";
 
 interface FormData {
     email: string;
@@ -20,7 +21,6 @@ const SignIn = () => {
         email: "",
         password: "",
     });
-
     const [errors, setErrors] = useState<FormErrors>({});
     const [touched, setTouched] = useState<Record<keyof FormData, boolean>>({
         email: false,
@@ -86,14 +86,17 @@ const SignIn = () => {
             }), {});
 
             if (Object.values(newErrors).every(error => !error)) {
-                // Here you would integrate with your loginUser function
-                const response = await loginUser(form.email, form.password);
+                const response = await loginUser(form);
 
-                // Handle successful login based on user role
-                if (response.user.role === 'ADMIN') {
-                    router.replace('/(admin)/dashboard');
+                if (response.status === 'success' && response.data) {
+                    // Handle successful login based on user role
+                    if (response.data.user.role === 'ADMIN') {
+                        router.replace('/(admin)/dashboard');
+                    } else {
+                        router.replace('/(auth)/reset-password');
+                    }
                 } else {
-                    router.replace('//(root)/(tabs)/home');
+                    Alert.alert("Login Failed", response.message);
                 }
             }
         } catch (error) {
@@ -105,6 +108,7 @@ const SignIn = () => {
             setLoading(false);
         }
     };
+
 
     return (
         <ScrollView
@@ -178,12 +182,13 @@ const SignIn = () => {
                     </TouchableOpacity>
 
                     <CustomButton
-                        title={loading ? "Signing In..." : "Sign In"}
-                        className="mt-8 p-4 rounded-xl"
-                        bgVariant="primary"
-                        disabled={!isFormValid || loading}
-                        onPress={handleSubmit}
-                    />
+                title={loading ? "Signing In..." : "Sign In"}
+                className="mt-8 p-4 rounded-xl"
+                bgVariant="primary"
+                disabled={!isFormValid || loading}
+                onPress={handleSubmit}
+            />
+
 
                     <TouchableOpacity
                         className="mt-6"
