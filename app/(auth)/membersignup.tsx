@@ -1,9 +1,10 @@
-import { Text, View, Image, ScrollView, TouchableOpacity } from "react-native";
+import { Text, View, Image, ScrollView, TouchableOpacity, Alert } from "react-native";
 import InputField from "@/components/InputField";
 import { icons, images } from "@/constants";
 import { useState, useMemo } from "react";
 import CustomButton from "@/components/CustomButton";
 import { router } from "expo-router";
+import { memberSignup } from "@/actions/membe-register";
 
 interface FormData {
     fullName: string;
@@ -20,6 +21,7 @@ interface FormErrors {
 }
 
 const MemberSignup = () => {
+    const [isLoading, setIsLoading] = useState(false);
     const [form, setForm] = useState<FormData>({
         fullName: "",
         email: "",
@@ -83,7 +85,7 @@ const MemberSignup = () => {
         return allFieldsFilled && noErrors;
     }, [form, errors]);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const allTouched = Object.keys(form).reduce((acc, key) => ({
             ...acc,
             [key]: true
@@ -96,7 +98,39 @@ const MemberSignup = () => {
         }), {});
 
         if (Object.values(newErrors).every(error => !error)) {
-            console.log('Form submitted:', form);
+            setIsLoading(true);
+            try {
+                console.log('Initiating signup process...');
+                const response = await memberSignup(form);
+                
+                if (response.status === 'success') {
+                    console.log('Signup successful');
+                    Alert.alert(
+                        "Success",
+                        "Registration successful!",
+                        [
+                            {
+                                text: "OK",
+                                onPress: () => {
+                                    console.log('Navigating to sign-in page');
+                                    router.replace("/(auth)/sign-in");
+                                }
+                            }
+                        ]
+                    );
+                } else {
+                    console.error('Signup failed:', response.message);
+                    Alert.alert("Registration Failed", response.message);
+                }
+            } catch (error) {
+                console.error('Signup error:', error);
+                Alert.alert(
+                    "Error",
+                    "An unexpected error occurred. Please check your connection and try again."
+                );
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -199,12 +233,13 @@ const MemberSignup = () => {
                     </TouchableOpacity>
 
                     <CustomButton
-                        title="Register"
-                        className="mt-8 p-4 rounded-xl"
-                        bgVariant="primary"
-                        disabled={!isFormValid}
-                        onPress={handleSubmit}
-                    />
+            title={isLoading ? "Registering..." : "Register"}
+            className="mt-8 p-4 rounded-xl"
+            bgVariant="primary"
+            disabled={!isFormValid || isLoading}
+            onPress={handleSubmit}
+            loading={isLoading} // Make sure CustomButton supports a loading prop
+        />
 
                     <TouchableOpacity
                         className="mt-6"

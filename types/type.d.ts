@@ -8,6 +8,7 @@ interface ButtonProps extends TouchableOpacityProps {
     onPress?: () => void;
     size?: "sm" | "md" | "lg";
     disabled?: boolean;
+    loading?: boolean;
 }
 interface InputFieldProps extends TextInputProps {
     label: string;
