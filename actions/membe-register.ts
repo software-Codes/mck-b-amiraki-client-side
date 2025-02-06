@@ -10,7 +10,7 @@ interface SignupData {
 
 interface ApiResponse {
     status: string;
-    message: string;
+    message: string;    
     data?: {
         user: any;
         token: string;
