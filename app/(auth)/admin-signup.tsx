@@ -31,7 +31,7 @@ interface FormErrors {
 const AdminSignup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { handleAdminSignup } = useAdminSignup();
-  
+
   const [form, setForm] = useState<FormData>({
     fullName: "",
     email: "",
@@ -46,48 +46,57 @@ const AdminSignup = () => {
     phoneNumber: false,
   });
 
-  const validateField = useCallback((fieldName: keyof FormData, value: string) => {
-    let error = "";
+  const validateField = useCallback(
+    (fieldName: keyof FormData, value: string) => {
+      let error = "";
 
-    if (!value.trim()) {
-      error = `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`;
-    } else {
-      switch (fieldName) {
-        case "email":
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(value)) {
-            error = "Please enter a valid email address";
-          }
-          break;
-        case "password":
-          if (value.length < 8 && value.trim()) {
-            error = "Password must be at least 8 characters long";
-          }
-          break;
-        case "phoneNumber":
-          const phoneRegex = /^\d{10}$/;
-          if (!phoneRegex.test(value)) {
-            error = "Please enter a valid 10-digit phone number";
-          }
-          break;
+      if (!value.trim()) {
+        error = `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`;
+      } else {
+        switch (fieldName) {
+          case "email":
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+              error = "Please enter a valid email address";
+            }
+            break;
+          case "password":
+            if (value.length < 8 && value.trim()) {
+              error = "Password must be at least 8 characters long";
+            }
+            break;
+          case "phoneNumber":
+            const phoneRegex = /^\d{10}$/;
+            if (!phoneRegex.test(value)) {
+              error = "Please enter a valid 10-digit phone number";
+            }
+            break;
+        }
       }
-    }
 
-    setErrors((prev) => ({ ...prev, [fieldName]: error }));
-    return error;
-  }, []);
+      setErrors((prev) => ({ ...prev, [fieldName]: error }));
+      return error;
+    },
+    []
+  );
 
-  const handleBlur = useCallback((fieldName: keyof FormData) => {
-    setTouched((prev) => ({ ...prev, [fieldName]: true }));
-    validateField(fieldName, form[fieldName]);
-  }, [form, validateField]);
+  const handleBlur = useCallback(
+    (fieldName: keyof FormData) => {
+      setTouched((prev) => ({ ...prev, [fieldName]: true }));
+      validateField(fieldName, form[fieldName]);
+    },
+    [form, validateField]
+  );
 
-  const handleChange = useCallback((fieldName: keyof FormData, value: string) => {
-    setForm((prev) => ({ ...prev, [fieldName]: value }));
-    if (touched[fieldName]) {
-      validateField(fieldName, value);
-    }
-  }, [touched, validateField]);
+  const handleChange = useCallback(
+    (fieldName: keyof FormData, value: string) => {
+      setForm((prev) => ({ ...prev, [fieldName]: value }));
+      if (touched[fieldName]) {
+        validateField(fieldName, value);
+      }
+    },
+    [touched, validateField]
+  );
 
   const isFormValid = useMemo(() => {
     const allFieldsFilled = Object.values(form).every(
@@ -250,10 +259,10 @@ const AdminSignup = () => {
           />
 
           {isLoading && (
-            <ActivityIndicator 
-              size="small" 
-              color="#4B5563" 
-              style={{ marginTop: 10 }} 
+            <ActivityIndicator
+              size="small"
+              color="#4B5563"
+              style={{ marginTop: 10 }}
             />
           )}
 
