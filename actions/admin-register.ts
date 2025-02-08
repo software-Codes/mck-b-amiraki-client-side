@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { useAsyncStorage } from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
 
 const API_BASE_URL = 'https://nodebackend.salmontree-886fdcec.westus2.azurecontainerapps.io';
 
@@ -13,11 +12,12 @@ interface AdminSignupData {
 }
 
 interface ApiResponse {
-    status: string;
+    success: boolean;
     message: string;
     data?: {
-        user: any;
-        token: string;
+        id: string;
+        email: string;
+        status: string;
     };
     errors?: Array<{
         msg: string;
@@ -37,7 +37,7 @@ export const useAdminSignup = () => {
                 `${API_BASE_URL}/api/auth/register-admin`,
                 {
                     ...formData,
-                    is_super_admin: true // Default value, can be modified if needed
+                    is_super_admin: true
                 },
                 {
                     headers: {
@@ -46,22 +46,30 @@ export const useAdminSignup = () => {
                 }
             );
 
-            if (response.data.status === 'success' && response.data.data?.token) {
-                // Store the token
-                await setItem(response.data.data.token);
-                
+            // If the response indicates success, return success
+            if (response.data.success) {
+                // Store any necessary data in AsyncStorage if needed
+                if (response.data.data?.id) {
+                    await setItem(JSON.stringify({
+                        userId: response.data.data.id,
+                        email: response.data.data.email
+                    }));
+                }
+
                 return {
                     success: true,
-                    message: 'Registration successful! Please check your email for verification.',
-                };
-            } else {
-                return {
-                    success: false,
-                    message: response.data.message || 'Registration failed. Please try again.',
+                    message: response.data.message
                 };
             }
+
+            // If we get here, something went wrong
+            return {
+                success: false,
+                message: response.data.message || 'Registration failed. Please try again.'
+            };
+
         } catch (error: any) {
-            console.error('Admin signup error:', error);
+            console.error('Admin signup error:', error.response?.data || error);
 
             // Handle validation errors
             if (error.response?.data?.errors) {
@@ -74,17 +82,10 @@ export const useAdminSignup = () => {
                 };
             }
 
-            // Handle email/phone already exists error
-            if (error.response?.data?.message?.includes('already exists')) {
-                return {
-                    success: false,
-                    message: error.response.data.message,
-                };
-            }
-
+            // Return the error message from the backend
             return {
                 success: false,
-                message: 'An error occurred during registration. Please try again later.',
+                message: error.response?.data?.message || 'An error occurred during registration. Please try again later.',
             };
         }
     };

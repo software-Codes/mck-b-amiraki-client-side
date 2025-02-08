@@ -5,10 +5,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import InputField from "@/components/InputField";
 import { icons, images } from "@/constants";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import CustomButton from "@/components/CustomButton";
 import { router } from "expo-router";
 import { useAdminSignup } from "@/actions/admin-register";
@@ -29,9 +30,8 @@ interface FormErrors {
 
 const AdminSignup = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const gotoVerifyEmail = () => router.push("/(auth)/verify-email");
-
   const { handleAdminSignup } = useAdminSignup();
+  
   const [form, setForm] = useState<FormData>({
     fullName: "",
     email: "",
@@ -46,7 +46,7 @@ const AdminSignup = () => {
     phoneNumber: false,
   });
 
-  const validateField = (fieldName: keyof FormData, value: string) => {
+  const validateField = useCallback((fieldName: keyof FormData, value: string) => {
     let error = "";
 
     if (!value.trim()) {
@@ -75,19 +75,19 @@ const AdminSignup = () => {
 
     setErrors((prev) => ({ ...prev, [fieldName]: error }));
     return error;
-  };
+  }, []);
 
-  const handleBlur = (fieldName: keyof FormData) => {
+  const handleBlur = useCallback((fieldName: keyof FormData) => {
     setTouched((prev) => ({ ...prev, [fieldName]: true }));
     validateField(fieldName, form[fieldName]);
-  };
+  }, [form, validateField]);
 
-  const handleChange = (fieldName: keyof FormData, value: string) => {
+  const handleChange = useCallback((fieldName: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [fieldName]: value }));
     if (touched[fieldName]) {
       validateField(fieldName, value);
     }
-  };
+  }, [touched, validateField]);
 
   const isFormValid = useMemo(() => {
     const allFieldsFilled = Object.values(form).every(
@@ -97,7 +97,9 @@ const AdminSignup = () => {
     return allFieldsFilled && noErrors;
   }, [form, errors]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
+    if (isLoading) return; // Prevent multiple submissions
+
     const allTouched = Object.keys(form).reduce(
       (acc, key) => ({
         ...acc,
@@ -120,12 +122,9 @@ const AdminSignup = () => {
       try {
         const result = await handleAdminSignup(form);
         if (result.success) {
-          Alert.alert("Success",  result.message, [
-            {
-              text: "OK",
-              onPress: gotoVerifyEmail,
-            },
-          ]);
+          // Navigate first, then show alert
+          router.push("/(auth)/verify-email");
+          Alert.alert("Success", result.message);
         } else {
           Alert.alert("Error", result.message);
         }
@@ -138,7 +137,7 @@ const AdminSignup = () => {
         setIsLoading(false);
       }
     }
-  };
+  }, [form, isLoading, validateField, handleAdminSignup]);
 
   return (
     <ScrollView
@@ -148,7 +147,6 @@ const AdminSignup = () => {
     >
       <View className="flex-1">
         <View className="relative w-full h-[280px]">
-          {/* Background Image with Overlay */}
           <View className="absolute inset-0 bg-black/20">
             <Image
               source={images.membersignup}
@@ -157,9 +155,8 @@ const AdminSignup = () => {
             />
           </View>
 
-          {/* Welcome Text Container */}
           <View className="absolute inset-0 flex items-center font-jakartaBold justify-end px-6">
-            <View className="space-y-2 ">
+            <View className="space-y-2">
               <Text className="text-4xl font-jakartaBold text-primary-600">
                 Admin Sign Up
               </Text>
@@ -171,6 +168,7 @@ const AdminSignup = () => {
         </View>
 
         <View className="px-6 py-8">
+          {/* Form fields */}
           <InputField
             label="Full Name"
             icon={icons.person}
@@ -183,6 +181,7 @@ const AdminSignup = () => {
             placeholder="Enter your full name"
             iconStyle="w-6 h-6"
             className="border-2 border-blue-400 rounded-xl focus:border-blue-600"
+            editable={!isLoading}
           />
           <InputField
             label="Email"
@@ -198,6 +197,7 @@ const AdminSignup = () => {
             autoCapitalize="none"
             iconStyle="w-6 h-6"
             className="border-2 border-blue-400 rounded-xl focus:border-blue-600"
+            editable={!isLoading}
           />
           <InputField
             label="Password"
@@ -213,6 +213,7 @@ const AdminSignup = () => {
             autoCapitalize="none"
             iconStyle="w-6 h-6"
             className="border-2 border-blue-400 rounded-xl focus:border-blue-600"
+            editable={!isLoading}
           />
           <InputField
             label="Phone Number"
@@ -227,11 +228,13 @@ const AdminSignup = () => {
             placeholder="Enter your phone number"
             iconStyle="w-6 h-6"
             className="border-2 border-blue-400 rounded-xl focus:border-blue-600"
+            editable={!isLoading}
           />
 
           <TouchableOpacity
             className="mt-4"
             onPress={() => router.push("/(auth)/membersignup")}
+            disabled={isLoading}
           >
             <Text className="text-blue-500 font-jakartaMedium underline">
               Register as member
@@ -239,16 +242,25 @@ const AdminSignup = () => {
           </TouchableOpacity>
 
           <CustomButton
-            title={isLoading ? "Registering admin..." : "Register"}
+            title={isLoading ? "Please wait..." : "Register"}
             className="mt-8 p-4 rounded-xl"
             bgVariant="primary"
             disabled={!isFormValid || isLoading}
             onPress={handleSubmit}
           />
 
+          {isLoading && (
+            <ActivityIndicator 
+              size="small" 
+              color="#4B5563" 
+              style={{ marginTop: 10 }} 
+            />
+          )}
+
           <TouchableOpacity
             className="mt-6"
             onPress={() => router.push("/(auth)/sign-in")}
+            disabled={isLoading}
           >
             <Text className="text-center text-blue-500 font-jakartaMedium underline">
               Already have an account? Login
