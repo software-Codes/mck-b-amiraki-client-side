@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { images } from "@/constants";
@@ -23,6 +24,7 @@ const EmailVerification = () => {
     Array(VERIFICATION_CODE_LENGTH).fill("")
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [resendDisabled, setResendDisabled] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [adminData, setAdminData] = useState(null);
@@ -30,8 +32,7 @@ const EmailVerification = () => {
   const { getItem } = useAsyncStorage("@user_token");
   const { email } = useLocalSearchParams();
 
-  const { verifyEmail, resendVerificationCode, getStoredEmail } =
-    useEmailVerification();
+  const { verifyEmail, resendVerificationCode, getStoredEmail } = useEmailVerification();
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -73,27 +74,12 @@ const EmailVerification = () => {
   };
 
   const handleKeyPress = (e: any, index: number) => {
-    if (
-      e.nativeEvent.key === "Backspace" &&
-      !verificationCode[index] &&
-      index > 0
-    ) {
+    if (e.nativeEvent.key === "Backspace" && !verificationCode[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  // useEffect(() => {
-  //   const fetchEmail =  async () => {
-  //     const storedEmail = await getStoredEmail();
-  //     if (storedEmail) {
-  //      setUserEmail(storedEmail);
-  //     }
-  //   };
-  //   fetchEmail();
-  // }, []);
 
   const handleSubmit = async () => {
-    // Get stored email from AsyncStorage
     const storedEmail = await getStoredEmail();
 
     if (!storedEmail) {
@@ -101,13 +87,11 @@ const EmailVerification = () => {
       return;
     }
 
-    // Validate email format
     if (!EMAIL_REGEX.test(storedEmail)) {
       Alert.alert("Error", "Invalid email format");
       return;
     }
 
-    // Validate verification code
     const code = verificationCode.join("");
     if (code.length !== VERIFICATION_CODE_LENGTH) {
       Alert.alert("Error", "Please enter the complete verification code");
@@ -115,62 +99,44 @@ const EmailVerification = () => {
     }
 
     setIsLoading(true);
+    setVerificationStatus('loading');
+
     try {
       const result = await verifyEmail({
-        email: storedEmail, // Use the correct parameter name 'email' instead of 'userEmail'
+        email: storedEmail,
         verificationCode: code,
       });
 
       if (result.success) {
-        if (result.data?.role === "admin") {
-          // Handle admin verification success
-          Alert.alert(
-            "Success",
-            "Admin account verified successfully!",
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  router.push("/(admin)/dashboard");
-                },
-              },
-            ],
-            { cancelable: false }
-          );
-        } else {
-          // Handle regular user verification success
-          Alert.alert(
-            "Success",
-            result.message || "Email verified successfully!",
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  router.push("/(root)/(tabs)/home");
-                },
-              },
-            ],
-            { cancelable: false }
-          );
-        }
-      } else {
-        // Handle verification failure
+        setVerificationStatus('success');
         Alert.alert(
-          "Error",
-          result.message || "Verification failed. Please try again."
+          "Verification Successful",
+          "Your admin account has been verified successfully. You will be redirected to the admin dashboard.",
+          [
+            {
+              text: "Proceed to Dashboard",
+              onPress: () => {
+                router.push("/(admin)/dashboard");
+              },
+            },
+          ],
+          { cancelable: false }
         );
+      } else {
+        setVerificationStatus('error');
+        Alert.alert("Verification Failed", result.message);
       }
     } catch (error: any) {
-      // Handle errors
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to verify email. Please try again.";
+      setVerificationStatus('error');
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Verification failed. Please check your code and try again.";
       Alert.alert("Error", errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+
   const handleResendCode = async () => {
     if (!email || resendDisabled) return;
 
@@ -180,7 +146,10 @@ const EmailVerification = () => {
       if (result.success) {
         setCountdown(60);
         setResendDisabled(true);
-        Alert.alert("Success", result.message);
+        Alert.alert(
+          "Code Resent",
+          "A new verification code has been sent to your email address."
+        );
       } else {
         Alert.alert("Error", result.message);
       }
@@ -214,8 +183,8 @@ const EmailVerification = () => {
 
         <View className="px-6 py-8">
           <Text className="text-center text-gray-600 mb-8 font-jakartaMedium">
-            Please enter the verification code sent to{"\n"}
-            <Text className="font-jakartaBold text-primary-600">{email}</Text>
+            Please enter the verification code sent to {"\n"}
+            <Text className="font-jakartaBold text-primary-600">your email address</Text>
           </Text>
 
           <View className="flex-row justify-between mb-8">
@@ -223,19 +192,37 @@ const EmailVerification = () => {
               <TextInput
                 key={index}
                 ref={(ref) => (inputRefs.current[index] = ref)}
-                className="w-12 h-12 border-2 border-blue-400 rounded-xl text-center text-xl font-jakartaBold"
+                className={`w-12 h-12 border-2 ${
+                  verificationStatus === 'success' 
+                    ? 'border-green-400' 
+                    : verificationStatus === 'error'
+                    ? 'border-red-400'
+                    : 'border-blue-400'
+                } rounded-xl text-center text-xl font-jakartaBold`}
                 maxLength={1}
                 keyboardType="number-pad"
                 value={digit}
                 onChangeText={(text) => handleCodeChange(text, index)}
                 onKeyPress={(e) => handleKeyPress(e, index)}
+                editable={!isLoading}
               />
             ))}
           </View>
 
+          {verificationStatus === 'loading' && (
+            <View className="items-center mb-4">
+              <ActivityIndicator size="large" color="#4F46E5" />
+              <Text className="text-gray-600 mt-2 font-jakartaMedium">
+                Verifying your admin account...
+              </Text>
+            </View>
+          )}
+
           <CustomButton
             title={isLoading ? "Verifying..." : "Verify Email"}
-            className="p-4 rounded-xl mb-4"
+            className={`p-4 rounded-xl mb-4 ${
+              verificationStatus === 'loading' ? 'opacity-70' : 'opacity-100'
+            }`}
             bgVariant="primary"
             disabled={
               isLoading ||
@@ -254,7 +241,7 @@ const EmailVerification = () => {
             >
               <Text
                 className={`font-jakartaBold ${
-                  resendDisabled ? "text-gray-400" : "text-blue-500"
+                  resendDisabled || isLoading ? "text-gray-400" : "text-blue-500"
                 }`}
               >
                 {resendDisabled ? `Resend in ${countdown}s` : "Resend Code"}

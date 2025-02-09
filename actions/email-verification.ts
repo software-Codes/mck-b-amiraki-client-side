@@ -10,7 +10,7 @@ interface VerificationData {
 }
 
 interface ApiResponse {
-  success: boolean;
+  status: 'success' | 'error';  // Updated to match backend
   message: string;
   data?: {
     id: string;
@@ -37,7 +37,6 @@ export const useEmailVerification = () => {
     data?: ApiResponse["data"];
   }> => {
     try {
-      // First, get the stored user data
       const storedData = await getItem();
       const userData = storedData ? JSON.parse(storedData) : null;
 
@@ -48,7 +47,7 @@ export const useEmailVerification = () => {
       const response = await axios.post<ApiResponse>(
         `${API_BASE_URL}/api/auth/verify-admin`,
         {
-          email: userData.email, // Use the email from stored data
+          email: userData.email,
           verificationCode: data.verificationCode,
         },
         {
@@ -58,8 +57,8 @@ export const useEmailVerification = () => {
         }
       );
 
-      if (response.data.success) {
-        // Update stored user data with verified status
+      // Update to handle the backend's status field
+      if (response.data.status === 'success') {
         const updatedUserData = {
           ...userData,
           status: "active",
@@ -69,7 +68,7 @@ export const useEmailVerification = () => {
 
         return {
           success: true,
-          message: "Email verified successfully!",
+          message: response.data.message,
           data: response.data.data,
         };
       }
@@ -81,6 +80,7 @@ export const useEmailVerification = () => {
     } catch (error: any) {
       console.error("Email verification error:", error);
 
+      // Handle validation errors
       if (error.response?.data?.errors) {
         const errorMessages = error.response.data.errors
           .map((err: { msg: string }) => err.msg)
@@ -91,6 +91,7 @@ export const useEmailVerification = () => {
         };
       }
 
+      // Handle other errors
       return {
         success: false,
         message:
@@ -126,7 +127,7 @@ export const useEmailVerification = () => {
         }
       );
 
-      if (response.data.success) {
+      if (response.data.status === 'success') {
         return {
           success: true,
           message: "Verification code resent successfully!",
