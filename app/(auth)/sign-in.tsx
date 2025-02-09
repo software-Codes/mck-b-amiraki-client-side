@@ -105,7 +105,7 @@ const SignIn = () => {
 
         if (response.status === "success" && response.data) {
           // Handle successful login based on user role
-          if (response.data.user.role === "ADMIN") {
+          if (response.data.user.role === "admin") {
             router.replace("/(admin)/dashboard");
           } else {
             router.replace("/(root)/(tabs)/home");
