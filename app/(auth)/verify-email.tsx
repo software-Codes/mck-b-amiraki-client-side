@@ -24,7 +24,9 @@ const EmailVerification = () => {
     Array(VERIFICATION_CODE_LENGTH).fill("")
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [verificationStatus, setVerificationStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [resendDisabled, setResendDisabled] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [adminData, setAdminData] = useState(null);
@@ -32,7 +34,8 @@ const EmailVerification = () => {
   const { getItem } = useAsyncStorage("@user_token");
   const { email } = useLocalSearchParams();
 
-  const { verifyEmail, resendVerificationCode, getStoredEmail } = useEmailVerification();
+  const { verifyEmail, resendVerificationCode, getStoredEmail } =
+    useEmailVerification();
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -74,7 +77,11 @@ const EmailVerification = () => {
   };
 
   const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === "Backspace" && !verificationCode[index] && index > 0) {
+    if (
+      e.nativeEvent.key === "Backspace" &&
+      !verificationCode[index] &&
+      index > 0
+    ) {
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -99,7 +106,7 @@ const EmailVerification = () => {
     }
 
     setIsLoading(true);
-    setVerificationStatus('loading');
+    setVerificationStatus("loading");
 
     try {
       const result = await verifyEmail({
@@ -108,7 +115,7 @@ const EmailVerification = () => {
       });
 
       if (result.success) {
-        setVerificationStatus('success');
+        setVerificationStatus("success");
         Alert.alert(
           "Verification Successful",
           "Your admin account has been verified successfully. You will be redirected to the admin dashboard.",
@@ -123,14 +130,15 @@ const EmailVerification = () => {
           { cancelable: false }
         );
       } else {
-        setVerificationStatus('error');
+        setVerificationStatus("error");
         Alert.alert("Verification Failed", result.message);
       }
     } catch (error: any) {
-      setVerificationStatus('error');
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Verification failed. Please check your code and try again.";
+      setVerificationStatus("error");
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Verification failed. Please check your code and try again.";
       Alert.alert("Error", errorMessage);
     } finally {
       setIsLoading(false);
@@ -184,7 +192,9 @@ const EmailVerification = () => {
         <View className="px-6 py-8">
           <Text className="text-center text-gray-600 mb-8 font-jakartaMedium">
             Please enter the verification code sent to {"\n"}
-            <Text className="font-jakartaBold text-primary-600">your email address</Text>
+            <Text className="font-jakartaBold text-primary-600">
+              your email address
+            </Text>
           </Text>
 
           <View className="flex-row justify-between mb-8">
@@ -193,11 +203,11 @@ const EmailVerification = () => {
                 key={index}
                 ref={(ref) => (inputRefs.current[index] = ref)}
                 className={`w-12 h-12 border-2 ${
-                  verificationStatus === 'success' 
-                    ? 'border-green-400' 
-                    : verificationStatus === 'error'
-                    ? 'border-red-400'
-                    : 'border-blue-400'
+                  verificationStatus === "success"
+                    ? "border-green-400"
+                    : verificationStatus === "error"
+                      ? "border-red-400"
+                      : "border-blue-400"
                 } rounded-xl text-center text-xl font-jakartaBold`}
                 maxLength={1}
                 keyboardType="number-pad"
@@ -209,7 +219,7 @@ const EmailVerification = () => {
             ))}
           </View>
 
-          {verificationStatus === 'loading' && (
+          {verificationStatus === "loading" && (
             <View className="items-center mb-4">
               <ActivityIndicator size="large" color="#4F46E5" />
               <Text className="text-gray-600 mt-2 font-jakartaMedium">
@@ -221,7 +231,7 @@ const EmailVerification = () => {
           <CustomButton
             title={isLoading ? "Verifying..." : "Verify Email"}
             className={`p-4 rounded-xl mb-4 ${
-              verificationStatus === 'loading' ? 'opacity-70' : 'opacity-100'
+              verificationStatus === "loading" ? "opacity-70" : "opacity-100"
             }`}
             bgVariant="primary"
             disabled={
@@ -241,7 +251,9 @@ const EmailVerification = () => {
             >
               <Text
                 className={`font-jakartaBold ${
-                  resendDisabled || isLoading ? "text-gray-400" : "text-blue-500"
+                  resendDisabled || isLoading
+                    ? "text-gray-400"
+                    : "text-blue-500"
                 }`}
               >
                 {resendDisabled ? `Resend in ${countdown}s` : "Resend Code"}
