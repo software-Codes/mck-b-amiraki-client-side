@@ -52,7 +52,7 @@ const Layout = () => {
             })}
         >
             <Tabs.Screen name="home" options={{ title: 'Home' }} />
-            <Tabs.Screen name="annoucements" options={{ title: 'Updates' }} />
+            <Tabs.Screen name="annoucements" options={{ title: 'Annoucements' }} />
             <Tabs.Screen name="payments" options={{ title: 'Payments' }} />
             <Tabs.Screen name="gallery" options={{ title: 'Gallery' }} />
             <Tabs.Screen name="events" options={{ title: 'Events' }} />
