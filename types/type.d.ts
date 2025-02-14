@@ -39,3 +39,4 @@ interface PasswordValidation {
     hasSpecialChar: boolean;
     matches: boolean;
 }
+
