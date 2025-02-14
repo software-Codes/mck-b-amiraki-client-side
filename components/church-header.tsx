@@ -39,27 +39,21 @@ const ChurchHeader: React.FC<ChurchHeaderProps> = ({
   return (
     <Animated.View
       entering={FadeInDown}
-      className="relative"
-      style={{ height: headerHeight }}
+      className="relative bg-primary-500 "
+      style={{
+        height: headerHeight,
+        borderBottomLeftRadius: 25,  // Rounded corners
+        borderBottomRightRadius: 25,
+        paddingVertical: 20,          // Vertical padding
+        paddingHorizontal: 15,        // Horizontal padding
+        shadowColor: '#000',         // Shadow color
+        shadowOffset: { width: 0, height: 2 },  // Shadow offset
+        shadowOpacity: 0.1,          // Shadow opacity
+        shadowRadius: 4,             // Shadow radius
+        elevation: 3,                // Elevation for Android
+      }}
     >
-      {/* Background Color */}
-      <View className="absolute w-full h-full bg-primary-500" />
-      
-      {/* Wave Pattern */}
-      <Svg
-        style={{
-          position: 'absolute',
-          bottom: -1,
-          width: width,
-          height: 50
-        }}
-        viewBox={`0 0 ${width} 50`}
-      >
-        <Path
-          d={`M0 25 C${width * 0.3} 0, ${width * 0.7} 50, ${width} 25 L${width} 0 L0 0 Z`}
-          fill="white"
-        />
-      </Svg>
+
 
       {/* Content */}
       <View className="px-6 pt-8">
@@ -80,7 +74,7 @@ const ChurchHeader: React.FC<ChurchHeaderProps> = ({
             {userName && (
               <View>
                 <Text className="text-white text-xs font-jakartaMedium">
-                  Hello 👋 <Text className="text-lg font-jakartaBold text-gradient">{userName}</Text> 
+                  Hello 👋 <Text className="text-lg font-jakartaBold text-gradient">{userName}</Text>
                 </Text>
                 <Text className="text-white text-xs font-jakartaMedium">
                   Welcome to
