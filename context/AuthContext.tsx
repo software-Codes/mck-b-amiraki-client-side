@@ -1,101 +1,111 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+// AuthContext.tsx
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { loginUser, checkAuthStatus, getUserData, logoutUser } from '../actions/sign-in';
+import * as SplashScreen from 'expo-splash-screen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface User {
-  id: string;
-  full_name: string;
-  email: string;
-  role: "user" | "admin";
-  status: string;
-}
+const AUTH_TOKEN_KEY = 'auth_token';
+const USER_DATA_KEY = 'user_data';
+
 interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  checkAuthStatus: () => Promise<boolean>;
+    isAuthenticated: boolean;
+    user: any | null;
+    login: (email: string, password: string) => Promise<any>;
+    logout: () => Promise<void>;
+    isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [user, setUser] = useState<any | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
+    useEffect(() => {
+        checkInitialAuthState();
+    }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem("userToken");
-      if (storedToken) {
-        // Set axios default header
-        axios.defaults.headers.common["Authorization"] =
-          `Bearer ${storedToken}`;
+    const checkInitialAuthState = async () => {
+        try {
+            // First check AsyncStorage for existing token and user data
+            const storedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+            const storedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
 
-        // Verify token and get user data
-        const response = await axios.get("'https://nodebackend.salmontree-886fdcec.westus2.azurecontainerapps.io/auth/verify");
-        setUser(response.data.user);
-        setToken(storedToken);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      await signOut();
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+            if (storedToken && storedUserData) {
+                // Validate the stored token with your backend
+                const isLoggedIn = await checkAuthStatus();
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      const response = await axios.post("'https://nodebackend.salmontree-886fdcec.westus2.azurecontainerapps.io/api/auth/login", {
-        email,
-        password,
-      });
+                if (isLoggedIn) {
+                    // If token is still valid, restore the user data
+                    const userData = JSON.parse(storedUserData);
+                    setUser(userData);
+                    setIsAuthenticated(true);
+                } else {
+                    // If token is invalid, clear storage
+                    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
+                }
+            }
+        } catch (error) {
+            console.error('Error checking initial auth state:', error);
+            // On error, clear storage to be safe
+            await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-      const { user, token } = response.data;
+    const login = async (email: string, password: string) => {
+        try {
+            const response = await loginUser({ email, password });
+            if (response.status === 'success' && response.data) {
+                // Store auth token and user data in AsyncStorage
+                await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.data.token);
+                await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.data.user));
 
-      // Store token
-      await AsyncStorage.setItem("userToken", token);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+                setUser(response.data.user);
+                setIsAuthenticated(true);
+                return { success: true };
+            }
+            return { success: false, message: response.message };
+        } catch (error) {
+            console.error('Login error:', error);
+            return { success: false, message: 'Login failed' };
+        }
+    };
 
-      setUser(user);
-      setToken(token);
-    } catch (error) {
-      throw error;
-    }
-  };
-  const signOut = async () => {
-    try {
-      await AsyncStorage.removeItem("userToken");
-      delete axios.defaults.headers.common["Authorization"];
-      setUser(null);
-      setToken(null);
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
-  return (
-    <AuthContext.Provider
-      value={{ user, token, isLoading, signIn, signOut, checkAuthStatus }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+    const logout = async () => {
+        try {
+            await logoutUser();
+            // Clear AsyncStorage
+            await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
+            setUser(null);
+            setIsAuthenticated(false);
+        } catch (error) {
+            console.error('Logout error:', error);
+            throw error;
+        }
+    };
+
+    return (
+        <AuthContext.Provider
+            value={{
+                isAuthenticated,
+                user,
+                login,
+                logout,
+                isLoading
+            }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (undefined === context) {
-      throw new Error('useAuth must be used within an AuthProvider');
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
-  };
+};
