@@ -10,7 +10,7 @@ import {
   Image,
   ActivityIndicator,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { images } from "@/constants";
 import CustomButton from "@/components/CustomButton";
 import { useEmailVerification } from "@/actions/email-verification";
@@ -175,13 +175,13 @@ const EmailVerification = () => {
     >
       <View className="flex-1">
         <View className="relative w-full h-[200px]">
-          <View className="absolute inset-0 bg-black/20">
-            <Image
-              source={images.onboarding1}
-              className="w-full h-full object-cover"
-              resizeMode="cover"
-            />
-          </View>
+          {/*<View className="absolute inset-0 bg-black/20">*/}
+          {/*  <Image*/}
+          {/*    source={images.onboarding1}*/}
+          {/*    className="w-full h-full object-cover"*/}
+          {/*    resizeMode="cover"*/}
+          {/*  />*/}
+          {/*</View>*/}
           <View className="absolute inset-0 flex items-center justify-end px-12">
             <Text className="text-3xl font-jakartaBold text-primary-600">
               Admin Verification
@@ -241,7 +241,20 @@ const EmailVerification = () => {
             onPress={handleSubmit}
           />
 
-          <View className="flex-row justify-center items-center mt-4">
+          <View className="flex-col justify-center items-center mt-4">
+            <View>
+              <Link href="/(auth)/sign-in"  >
+              <Text>
+                <Text className="text-gray-600 font-jakartaMedium">
+                  Already have an account?{" "}
+                </Text>
+                <Text className="font-jakartaBold text-blue-500">
+                  Sign In
+                </Text>
+              </Text>
+              </Link>
+            </View>
+
             <Text className="text-gray-600 font-jakartaMedium">
               Didn't receive the code?{" "}
             </Text>

@@ -142,14 +142,14 @@ const MemberSignup = () => {
         >
             <View className="flex-1">
                 <View className="relative w-full h-[280px]">
-                    {/* Background Image with Overlay */}
-                    <View className="absolute inset-0 bg-black/20">
-                        <Image
-                            source={images.membersignup}
-                            className="w-full h-full object-cover"
-                            resizeMode="cover"
-                        />
-                    </View>
+                    {/*/!* Background Image with Overlay *!/*/}
+                    {/*<View className="absolute inset-0 bg-black/20">*/}
+                    {/*    <Image*/}
+                    {/*        source={images.membersignup}*/}
+                    {/*        className="w-full h-full object-cover"*/}
+                    {/*        resizeMode="cover"*/}
+                    {/*    />*/}
+                    {/*</View>*/}
 
                     {/* Welcome Text Container */}
                     <View className="absolute inset-0 flex items-center font-jakartaBold justify-end px-6">

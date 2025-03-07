@@ -156,13 +156,13 @@ const AdminSignup = () => {
     >
       <View className="flex-1">
         <View className="relative w-full h-[280px]">
-          <View className="absolute inset-0 bg-black/20">
-            <Image
-              source={images.membersignup}
-              className="w-full h-full object-cover"
-              resizeMode="cover"
-            />
-          </View>
+          {/*<View className="absolute inset-0 bg-black/20">*/}
+          {/*  <Image*/}
+          {/*    source={images.membersignup}*/}
+          {/*    className="w-full h-full object-cover"*/}
+          {/*    resizeMode="cover"*/}
+          {/*  />*/}
+          {/*</View>*/}
 
           <View className="absolute inset-0 flex items-center font-jakartaBold justify-end px-6">
             <View className="space-y-2">
@@ -170,7 +170,7 @@ const AdminSignup = () => {
                 Admin Sign Up
               </Text>
               <Text className="text-2xl font-jakartaMedium text-primary-500">
-                Create an account
+                Create an account as Church Admin
               </Text>
             </View>
           </View>
