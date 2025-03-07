@@ -8,7 +8,7 @@ interface UserData {
   role: string;
 }
 
-export const getSessionUser = async (): Promise<UserData | null> => {
+export default getSessionUser = async (): Promise<UserData | null> => {
   try {
     const userData = await AsyncStorage.getItem('userData');
     return userData ? JSON.parse(userData) : null;
