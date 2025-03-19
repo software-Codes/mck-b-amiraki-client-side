@@ -2,7 +2,7 @@ import axios from "axios";
 import { useAsyncStorage } from "@react-native-async-storage/async-storage";
 
 const API_BASE_URL =
-  "https://nodebackend.salmontree-886fdcec.westus2.azurecontainerapps.io";
+  "https://apiinfrahdev.whiteflower-174c4983.westus2.azurecontainerapps.io";
 
 interface VerificationData {
   email: string;

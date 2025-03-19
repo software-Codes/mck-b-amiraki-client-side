@@ -1,5 +1,5 @@
 interface ButtonProps extends TouchableOpacityProps {
-    title: string;
+    title: string | React.ReactNode;
     bgVariant?: "primary" | "secondary" | "danger" | "outline" | "success";
     textVariant?: "primary" | "default" | "secondary" | "danger" | "success";
     IconLeft?: React.ComponentType<any>;

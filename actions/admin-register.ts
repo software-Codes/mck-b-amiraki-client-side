@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAsyncStorage } from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'https://nodebackend.salmontree-886fdcec.westus2.azurecontainerapps.io';
+const API_BASE_URL = 'https://apiinfrahdev.whiteflower-174c4983.westus2.azurecontainerapps.io';
 
 interface AdminSignupData {
     fullName: string;
@@ -19,10 +19,10 @@ interface ApiResponse {
         email: string;
         status: string;
     };
-    errors?: Array<{
+    errors?: {
         msg: string;
         param: string;
-    }>;
+    }[];
 }
 
 export const useAdminSignup = () => {

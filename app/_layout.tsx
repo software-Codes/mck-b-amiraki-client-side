@@ -5,6 +5,7 @@ import { useCallback, useEffect } from 'react';
 import 'react-native-reanimated';
 import "../global.css";
 import { AuthProvider } from '@/context/AuthContext';
+import { GlobalProvider } from '@/context/GlobalContext';
 import { View } from 'react-native';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -33,37 +34,39 @@ export default function RootLayout() {
     }
 
     return (
-        <AuthProvider>
-            <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-                <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" options={{ headerShown: false }} />
-                    <Stack.Screen
-                        name="(auth)"
-                        options={{
-                            headerShown: false,
-                            // Prevent going back to the index screen
-                            gestureEnabled: false
-                        }}
-                    />
-                    <Stack.Screen
-                        name="(root)"
-                        options={{
-                            headerShown: false,
-                            // Prevent going back to auth screens
-                            gestureEnabled: false
-                        }}
-                    />
-                    <Stack.Screen
-                        name="(admin)"
-                        options={{
-                            headerShown: false,
-                            // Prevent going back to auth screens
-                            gestureEnabled: false
-                        }}
-                    />
-                    <Stack.Screen name="+not-found" />
-                </Stack>
-            </View>
-        </AuthProvider>
+        <GlobalProvider>
+            <AuthProvider>
+                <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+                    <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="index" options={{ headerShown: false }} />
+                        <Stack.Screen
+                            name="(auth)"
+                            options={{
+                                headerShown: false,
+                                // Prevent going back to the index screen
+                                gestureEnabled: false
+                            }}
+                        />
+                        <Stack.Screen
+                            name="(root)"
+                            options={{
+                                headerShown: false,
+                                // Prevent going back to auth screens
+                                gestureEnabled: false
+                            }}
+                        />
+                        <Stack.Screen
+                            name="(admin)"
+                            options={{
+                                headerShown: false,
+                                // Prevent going back to auth screens
+                                gestureEnabled: false
+                            }}
+                        />
+                        <Stack.Screen name="+not-found" />
+                    </Stack>
+                </View>
+            </AuthProvider>
+        </GlobalProvider>
     );
 }

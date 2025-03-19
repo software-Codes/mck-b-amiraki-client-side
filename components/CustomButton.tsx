@@ -33,7 +33,7 @@ const getTextVariantStyle = (variant: ButtonProps["textVariant"]) => {
 
 const CustomButton = ({
   onPress,
-  title,
+  title  ,
   bgVariant = "primary",
   textVariant = "default",
   IconLeft,

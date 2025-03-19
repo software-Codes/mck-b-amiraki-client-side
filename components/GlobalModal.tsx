@@ -4,13 +4,13 @@ import { Modal, View, TouchableOpacity } from 'react-native';
 import { useGlobalModal } from '../context/GlobalContext';
 
 export const GlobalModal: React.FC = () => {
-  const { showModal, modalContent, closeModal } = useGlobalModal();
+  const { isModalVisible, modalContent, closeModal } = useGlobalModal();
 
   return (
     <Modal
       animationType="slide"
       transparent={true}
-      visible={showModal}
+      visible={isModalVisible}
       onRequestClose={closeModal}
     >
       <TouchableOpacity

@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ColorSchemeName, useColorScheme } from 'react-native';
+import { ColorSchemeName, useColorScheme, Text } from 'react-native';
 
 interface AppSettings {
   language: string;
@@ -29,10 +29,10 @@ interface GlobalContextType {
   setIsLoading: (loading: boolean) => void;
   
   // Global Modal
-  showModal: boolean;
-  modalContent: React.ReactNode | null;
-  openModal: (content: React.ReactNode) => void;
+  showModal: (content: React.ReactNode | string) => void;
   closeModal: () => void;
+  isModalVisible: boolean;
+  modalContent: React.ReactNode | null;
   
   // Global Error Handling
   error: string | null;
@@ -64,7 +64,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(false);
   
   // Modal State
-  const [showModal, setShowModal] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
   
   // Error State
@@ -77,6 +77,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const storedSettings = await AsyncStorage.getItem('appSettings');
         if (storedSettings) {
           setSettings(JSON.parse(storedSettings));
+        }
+        
+        // Load saved theme preference
+        const savedTheme = await AsyncStorage.getItem('theme');
+        if (savedTheme) {
+          setTheme(savedTheme as ColorSchemeName);
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -119,14 +125,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Modal handlers
-  const openModal = (content: React.ReactNode) => {
-    setModalContent(content);
-    setShowModal(true);
+  const showModal = (content: React.ReactNode | string) => {
+    // Handle both string messages and React components
+    setModalContent(typeof content === 'string' ? <Text>{content}</Text> : content);
+    setIsModalVisible(true);
   };
 
   const closeModal = () => {
-    setShowModal(false);
-    setModalContent(null);
+    setIsModalVisible(false);
+    setTimeout(() => setModalContent(null), 300); // Clear content after animation completes
   };
 
   // Error handlers
@@ -142,9 +149,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     isLoading,
     setIsLoading,
     showModal,
-    modalContent,
-    openModal,
     closeModal,
+    isModalVisible,
+    modalContent,
     error,
     setError,
     clearError,
@@ -182,8 +189,8 @@ export const useAppSettings = () => {
 };
 
 export const useGlobalModal = () => {
-  const { showModal, modalContent, openModal, closeModal } = useGlobal();
-  return { showModal, modalContent, openModal, closeModal };
+  const { showModal, closeModal, isModalVisible, modalContent } = useGlobal();
+  return { showModal, closeModal, isModalVisible, modalContent };
 };
 
 export const useGlobalError = () => {

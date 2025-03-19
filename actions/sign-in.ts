@@ -1,170 +1,173 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {REFRESH_TOKEN_KEY, AUTH_TOKEN_KEY, TOKEN_EXPIRY_KEY,USER_DATA_KEY} from "@/types/auth/auth-context";
+import {ApiResponse, AuthTokens, UserData} from "@/types/api/auth-api";
 
-interface SignInData {
-    email: string;
-    password: string;
-}
 
-interface ApiResponse {
-    status: string;
-    message: string;
-    data?: {
-        user: any;
-        token: string;
-    };
-}
 
-const API_BASE_URL = 'https://nodebackend.salmontree-886fdcec.westus2.azurecontainerapps.io';
 
-export const loginUser = async ({ email, password }: SignInData): Promise<ApiResponse> => {
-    console.log('Starting login process for email:', email);
-    const apiUrl = `${API_BASE_URL}/api/auth/login`;
-    
-    try {
-        console.log('Making login request to:', apiUrl);
-        
-        const response = await axios({
-            method: 'post',
-            url: apiUrl,
-            data: { email, password },
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            timeout: 15000, // 15 second timeout
-            validateStatus: (status) => status < 500 // Handle all responses below 500
-        });
 
-        console.log('Login response status:', response.status);
-        console.log('Login response data:', JSON.stringify(response.data, null, 2));
+const API_BASE_URL = 'https://apiinfrahdev.whiteflower-174c4983.westus2.azurecontainerapps.io/';
+const axiosInstance = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 15000,
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+});
 
-        if (response.status === 200 || response.status === 201) {
-            console.log('Login successful, processing user data');
-            
+// Add request interceptor for token injection
+axiosInstance.interceptors.request.use(async (config) => {
+    const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+// Add response interceptor for token refresh
+axiosInstance.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
             try {
-                // Store authentication data
-                if (response.data.data?.token) {
-                    await AsyncStorage.setItem('authToken', response.data.data.token);
-                    console.log('Auth token stored successfully');
+                const newTokens = await refreshAccessToken();
+                if (newTokens) {
+                    originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`;
+                    return axiosInstance(originalRequest);
                 }
-
-                if (response.data.data?.user) {
-                    await AsyncStorage.setItem('userData', JSON.stringify(response.data.data.user));
-                    console.log('User data stored successfully');
-                }
-
-                return {
-                    status: 'success',
-                    message: 'Login successful',
-                    data: response.data.data
-                };
-            } catch (storageError) {
-                console.error('Error storing auth data:', storageError);
-                throw new Error('Failed to store authentication data');
+            } catch (refreshError) {
+                await logoutUser();
+                return Promise.reject(new Error('Session expired. Please login again.'));
             }
         }
 
-        // Handle non-success responses
-        console.warn('Login failed with status:', response.status);
-        return {
-            status: 'error',
-            message: response.data.message || 'Login failed'
-        };
+        return Promise.reject(error);
+    }
+);
 
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            console.error('Login Error Details:', {
-                message: error.message,
-                code: error.code,
-                response: error.response?.data,
-                status: error.response?.status
-            });
+export const loginUser = async (credentials: { email: string; password: string }): Promise<ApiResponse<{ user: UserData } & AuthTokens>> => {
+    try {
+        const response = await axiosInstance.post('/api/auth/login', credentials);
 
-            // Handle specific error cases
-            if (error.code === 'ECONNABORTED') {
-                return {
-                    status: 'error',
-                    message: 'Login request timed out. Please check your internet connection.'
-                };
-            }
+        if (response.data.status === 'success' && response.data.data) {
+            const { accessToken, refreshToken, expiresIn, user } = response.data.data;
+            const expiryDate = new Date(Date.now() + expiresIn * 1000).toISOString();
 
-            if (!error.response) {
-                return {
-                    status: 'error',
-                    message: 'Unable to reach the server. Please check your connection.'
-                };
-            }
+            await AsyncStorage.multiSet([
+                [AUTH_TOKEN_KEY, accessToken],
+                [REFRESH_TOKEN_KEY, refreshToken],
+                [USER_DATA_KEY, JSON.stringify(user)],
+                [TOKEN_EXPIRY_KEY, expiryDate]
+            ]);
 
-            // Handle specific HTTP status codes
-            switch (error.response.status) {
-                case 400:
-                    return {
-                        status: 'error',
-                        message: 'Invalid email or password format'
-                    };
-                case 401:
-                    return {
-                        status: 'error',
-                        message: 'Invalid credentials. Please check your email and password.'
-                    };
-                case 404:
-                    return {
-                        status: 'error',
-                        message: 'Account not found. Please check your email.'
-                    };
-                case 429:
-                    return {
-                        status: 'error',
-                        message: 'Too many login attempts. Please try again later.'
-                    };
-                default:
-                    return {
-                        status: 'error',
-                        message: error.response.data.message || 'Login failed. Please try again.'
-                    };
+            return {
+                status: 'success',
+                message: 'Login successful Continue to the Homepage',
+                data: { accessToken, refreshToken, expiresIn, user }
             }
         }
 
-        // Handle non-Axios errors
-        console.error('Unexpected login error:', error);
         return {
             status: 'error',
-            message: 'An unexpected error occurred. Please try again.'
+            message: response.data.message || 'Authentication failed'
         };
+    } catch (error) {
+        return handleApiError(error);
     }
 };
 
-// Utility function to check if user is logged in
-export const checkAuthStatus = async (): Promise<boolean> => {
+export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
     try {
-        const token = await AsyncStorage.getItem('authToken');
-        const userData = await AsyncStorage.getItem('userData');
-        return !!(token && userData);
-    } catch (error) {
-        console.error('Error checking auth status:', error);
-        return false;
-    }
-};
+        const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+        if (!refreshToken) return null;
 
-// Utility function to get user data
-export const getUserData = async () => {
-    try {
-        const userData = await AsyncStorage.getItem('userData');
-        return userData ? JSON.parse(userData) : null;
+        const response = await axiosInstance.post('/api/auth/refresh-token', { refreshToken });
+
+        if (response.data.status === 'success' && response.data.data) {
+            const { accessToken, refreshToken: newRefreshToken, expiresIn } = response.data.data;
+            const expiryDate = new Date(Date.now() + expiresIn * 1000).toISOString();
+
+            await AsyncStorage.multiSet([
+                [AUTH_TOKEN_KEY, accessToken],
+                [REFRESH_TOKEN_KEY, newRefreshToken],
+                [TOKEN_EXPIRY_KEY, expiryDate]
+            ]);
+
+            return { accessToken, refreshToken: newRefreshToken, expiresIn };
+        }
+
+        return null;
     } catch (error) {
-        console.error('Error getting user data:', error);
+        await logoutUser();
         return null;
     }
 };
 
-// Utility function to logout
+export const checkAuthStatus = async (): Promise<{ isValid: boolean; needsRefresh: boolean }> => {
+    try {
+        const [token, refreshToken, expiry] = await Promise.all([
+            AsyncStorage.getItem(AUTH_TOKEN_KEY),
+            AsyncStorage.getItem(REFRESH_TOKEN_KEY),
+            AsyncStorage.getItem(TOKEN_EXPIRY_KEY)
+        ]);
+
+        if (!token || !refreshToken || !expiry) return { isValid: false, needsRefresh: false };
+
+        const isValidToken = new Date(expiry) > new Date();
+        return {
+            isValid: isValidToken,
+            needsRefresh: !isValidToken
+        };
+    } catch (error) {
+        return { isValid: false, needsRefresh: false };
+    }
+};
+
 export const logoutUser = async (): Promise<void> => {
     try {
-        await AsyncStorage.multiRemove(['authToken', 'userData']);
-        console.log('Logout successful - Auth data cleared');
+        await AsyncStorage.multiRemove([
+            AUTH_TOKEN_KEY,
+            REFRESH_TOKEN_KEY,
+            USER_DATA_KEY,
+            TOKEN_EXPIRY_KEY
+        ]);
     } catch (error) {
-        console.error('Error during logout:', error);
-        throw new Error('Failed to logout properly');
+        console.error('Logout error:', error);
     }
+};
+
+const handleApiError = (error: unknown): ApiResponse => {
+    if (axios.isAxiosError(error)) {
+        console.error('API Error:', {
+            message: error.message,
+            code: error.code,
+            status: error.response?.status,
+            data: error.response?.data
+        });
+
+        const defaultMessage = error.response?.data?.message || 'An unexpected error occurred';
+
+        if (error.code === 'ECONNABORTED') {
+            return { status: 'error', message: 'Request timed out. Please check your connection.' };
+        }
+
+        switch (error.response?.status) {
+            case 400: return { status: 'error', message: 'Invalid request' };
+            case 401: return { status: 'error', message: 'Session expired. Please login again.' };
+            case 403: return { status: 'error', message: 'You don\'t have permission for this action' };
+            case 404: return { status: 'error', message: 'Resource not found' };
+            case 429: return { status: 'error', message: 'Too many requests. Please try again later.' };
+            case 500: return { status: 'error', message: 'Server error. Please try again later.' };
+            default: return { status: 'error', message: defaultMessage };
+        }
+    }
+
+    console.error('Non-Axios error:', error);
+    return { status: 'error', message: 'An unexpected error occurred' };
 };

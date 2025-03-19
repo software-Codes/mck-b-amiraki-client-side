@@ -1,172 +1,163 @@
-// AuthContext.tsx
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loginUser, logoutUser, checkAuthStatus as apiCheckAuthStatus } from '@/actions/sign-in';
+import { AUTH_TOKEN_KEY, TOKEN_EXPIRY_KEY, REFRESH_TOKEN_KEY, USER_DATA_KEY, AuthResponse, AuthContextType } from "@/types/auth/auth-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loginUser, logoutUser, refreshAccessToken } from "@/actions/sign-in";
+import React, { createContext, useContext, useCallback, useEffect, useState } from "react";
+import { useGlobal } from "@/context/GlobalContext";
 
-/**
- * Constants for AsyncStorage keys to maintain consistency across the application
- * @constant {string} AUTH_TOKEN_KEY - Key for storing authentication token
- * @constant {string} USER_DATA_KEY - Key for storing serialized user data
- */
-export const AUTH_TOKEN_KEY = 'authToken';
-export const USER_DATA_KEY = 'userData';
-
-/**
- * Interface defining the shape of the authentication context
- * @interface AuthContextType
- * @property {boolean} isAuthenticated - Flag indicating user authentication status
- * @property {any | null} user - User data object or null when not authenticated
- * @property {(email: string, password: string) => Promise<any>} login - User login function
- * @property {() => Promise<void>} logout - User logout function
- * @property {boolean} isLoading - Loading state for initial auth check
- */
-interface AuthContextType {
-    isAuthenticated: boolean;
-    user: any | null;
-    login: (email: string, password: string) => Promise<any>;
-    logout: () => Promise<void>;
-    isLoading: boolean;
-}
-
-/**
- * Authentication context created with React's createContext
- * Initialized as undefined for better TypeScript support
- */
+// Create context with proper type specification
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
- * AuthProvider component that manages authentication state and provides context to children
- * @component
- * @param {Object} props - React component props
- * @param {React.ReactNode} props.children - Child components to be wrapped by the provider
+ * AuthProvider component that manages authentication state and logic
+ * @param {React.PropsWithChildren} props - Component props with children
+ * @returns {React.ReactElement} Auth context provider component
  */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // State management for authentication status, user data, and loading state
+    // Get global state from parent context
+    const { isOnline, showModal } = useGlobal();
+
+    // Authentication state management
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-
-    // Effect hook for initial authentication state check on component mount
-    useEffect(() => {
-        checkInitialAuthState();
-    }, []);
+    const [isTokenRefreshing, setIsTokenRefreshing] = useState(false);
 
     /**
-     * Checks initial authentication state from persistent storage
-     * @async
-     * @function checkInitialAuthState
-     * @returns {Promise<void>}
+     * Initialize authentication state from persistent storage
      */
-    const checkInitialAuthState = async () => {
-        try {
-            // Retrieve stored authentication data from AsyncStorage
-            const [storedToken, storedUserData] = await Promise.all([
-                AsyncStorage.getItem(AUTH_TOKEN_KEY),
-                AsyncStorage.getItem(USER_DATA_KEY)
-            ]);
+    useEffect(() => {
+        const initializeAuth = async () => {
+            try {
+                // Parallel fetch of stored authentication data
+                const [storedUser, storedToken, storedRefresh, storedExpiry] = await Promise.all([
+                    AsyncStorage.getItem(USER_DATA_KEY),
+                    AsyncStorage.getItem(AUTH_TOKEN_KEY),
+                    AsyncStorage.getItem(REFRESH_TOKEN_KEY),
+                    AsyncStorage.getItem(TOKEN_EXPIRY_KEY),
+                ]);
 
-            if (storedToken && storedUserData) {
-                // Immediately set user data for fast UI rendering
-                const userData = JSON.parse(storedUserData);
-                setUser(userData);
-                setIsAuthenticated(true);
+                if (storedUser && storedToken && storedRefresh && storedExpiry) {
+                    const userData = JSON.parse(storedUser);
+                    const expiryDate = new Date(storedExpiry);
 
-                // Validate token with backend service (optional security step)
-                try {
-                    const isValid = await apiCheckAuthStatus();
-                    if (!isValid) {
-                        await handleInvalidToken();
+                    // Update UI with persisted data
+                    setUser(userData);
+                    setIsAuthenticated(true);
+
+                    // Validate token freshness
+                    if (new Date() < expiryDate) {
+                        setIsLoading(false);
+                    } else if (isOnline) {
+                        // Attempt silent refresh if offline previously
+                        await handleTokenRefresh();
                     }
-                } catch (validationError) {
-                    console.warn('Token validation error:', validationError);
-                    // Implementation decision: Maintain session on validation failure
-                    // Consider adding retry logic or manual validation here
                 }
+                setIsLoading(false);
+            } catch (error) {
+                console.error('Auth initialization error:', error);
+                await handleInvalidSession();
+                setIsLoading(false);
             }
+        };
+
+        initializeAuth();
+    }, [isOnline]); // Re-initialize when network status changes
+
+    /**
+     * Handle token refresh with exponential backoff retry strategy
+     * @param {number} attempt - Current retry attempt number
+     * @returns {Promise<void>} Refresh operation promise
+     */
+    const handleTokenRefresh = useCallback(async (attempt = 1) => {
+        if (!isOnline) return;
+
+        try {
+            setIsTokenRefreshing(true);
+            const tokens = await refreshAccessToken();
+
+            if (!tokens) {
+                throw new Error('Failed to refresh token');
+            }
+
+            // Update authentication state with new tokens
+            setIsTokenRefreshing(false);
+            return tokens;
         } catch (error) {
-            console.error('Error checking initial auth state:', error);
-            await handleStorageError();
+            if (attempt <= 3) {
+                // Exponential backoff with jitter
+                const delay = Math.min(1000 * 2 ** attempt, 30000);
+                setTimeout(() => handleTokenRefresh(attempt + 1), delay);
+            } else {
+                // Final cleanup after failed refresh attempts
+                await handleInvalidSession();
+                showModal('Session expired. Please login again.');
+            }
         } finally {
-            setIsLoading(false);
+            setIsTokenRefreshing(false);
         }
+    }, [isOnline, showModal]);
+
+    /**
+     * Clear all authentication data and reset state
+     */
+    const handleInvalidSession = async () => {
+        await AsyncStorage.multiRemove([
+            AUTH_TOKEN_KEY,
+            REFRESH_TOKEN_KEY,
+            USER_DATA_KEY,
+            TOKEN_EXPIRY_KEY
+        ]);
+        setIsAuthenticated(false);
+        setUser(null);
     };
 
     /**
-     * Handles user login operations
-     * @async
-     * @function login
-     * @param {string} email - User's email address
-     * @param {string} password - User's password
-     * @returns {Promise<{ success: boolean, message?: string }>} Login operation result
+     * Authentication handler with network awareness
+     * @param {string} email - User email
+     * @param {string} password - User password
+     * @returns {Promise<AuthResponse>} Authentication result
      */
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string): Promise<AuthResponse> => {
+        if (!isOnline) {
+            return { success: false, message: 'No internet connection' };
+        }
+
         try {
             const response = await loginUser({ email, password });
 
-            if (response.status === 'success' && response.data) {
-                // Update state with new user data
-                setUser(response.data.user);
-                setIsAuthenticated(true);
-                return { success: true };
+            if (response.status !== 'success' || !response.data) {
+                return {
+                    success: false,
+                    message: response.message || 'Authentication failed'
+                };
             }
 
-            return { success: false, message: response.message };
-        } catch (error) {
-            console.error('Login error:', error);
-            return { success: false, message: 'Login failed. Please try again.' };
+            // Update authentication state
+            setUser(response.data.user);
+            setIsAuthenticated(true);
+            return { success: true };
+        } catch (error: any) {
+            await handleInvalidSession();
+            return {
+                success: false,
+                message: error.message || 'Authentication failed'
+            };
         }
     };
 
     /**
-     * Handles user logout operations
-     * @async
-     * @function logout
-     * @returns {Promise<void>}
+     * Secure user logout handler
      */
     const logout = async () => {
         try {
-            setIsLoading(true);
-            await logoutUser(); // API call that clears AsyncStorage
-            resetAuthState();
+            await logoutUser();
+            await handleInvalidSession();
         } catch (error) {
             console.error('Logout error:', error);
-            throw error; // Propagate error for error boundary handling
-        } finally {
-            setIsLoading(false);
         }
     };
 
-    /**
-     * Resets authentication state to default values
-     * @function resetAuthState
-     */
-    const resetAuthState = () => {
-        setUser(null);
-        setIsAuthenticated(false);
-    };
-
-    /**
-     * Handles invalid token scenario by clearing storage and state
-     * @async
-     * @function handleInvalidToken
-     * @returns {Promise<void>}
-     */
-    const handleInvalidToken = async () => {
-        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
-        resetAuthState();
-    };
-
-    /**
-     * Handles storage errors by clearing potentially corrupted data
-     * @async
-     * @function handleStorageError
-     * @returns {Promise<void>}
-     */
-    const handleStorageError = async () => {
-        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
-        resetAuthState();
-    };
-
+    // Provide context value with authentication state and actions
     return (
         <AuthContext.Provider
             value={{
@@ -174,7 +165,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 user,
                 login,
                 logout,
-                isLoading
+                isLoading,
+                isTokenRefreshing
             }}
         >
             {children}
@@ -183,15 +175,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 /**
- * Custom hook for accessing authentication context
- * @function useAuth
- * @returns {AuthContextType} Authentication context
- * @throws {Error} If used outside AuthProvider
+ * Custom hook to access authentication context
+ * @returns {AuthContextType} Authentication context value
  */
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
+    if (!context) {
+        throw new Error('useAuth must be used within AuthProvider');
     }
     return context;
 };
