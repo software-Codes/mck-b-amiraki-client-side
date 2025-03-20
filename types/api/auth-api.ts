@@ -14,7 +14,7 @@
      id: string;
      email: string;
      role: string;
-     password: string;
+     password?: string;
      phoneNumber: string;
      // Add other user properties as needed
  }

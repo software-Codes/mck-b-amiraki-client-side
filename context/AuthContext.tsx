@@ -1,8 +1,9 @@
 import { AUTH_TOKEN_KEY, TOKEN_EXPIRY_KEY, REFRESH_TOKEN_KEY, USER_DATA_KEY, AuthResponse, AuthContextType } from "@/types/auth/auth-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loginUser, logoutUser, refreshAccessToken } from "@/actions/sign-in";
+import { loginUser, logoutUser, refreshAccessToken, checkAuthStatus, getCurrentUser } from "@/actions/sign-in";
 import React, { createContext, useContext, useCallback, useEffect, useState } from "react";
 import { useGlobal } from "@/context/GlobalContext";
+import { UserData } from "@/types/api/auth-api";
 
 // Create context with proper type specification
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,10 +18,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { isOnline, showModal } = useGlobal();
 
     // Authentication state management
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [user, setUser] = useState<any | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isTokenRefreshing, setIsTokenRefreshing] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [user, setUser] = useState<UserData | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isTokenRefreshing, setIsTokenRefreshing] = useState<boolean>(false);
+
+    /**
+     * Check token validity and refresh if needed
+     */
+    const checkAndRefreshToken = useCallback(async () => {
+        try {
+            const authStatus = await checkAuthStatus();
+
+            if (!authStatus.isValid && !isTokenRefreshing) {
+                // Token is invalid, try to refresh if we have refresh token
+                const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+                if (refreshToken && isOnline) {
+                    return await handleTokenRefresh();
+                } else {
+                    // No refresh token or offline
+                    await handleInvalidSession();
+                    return false;
+                }
+            } else if (authStatus.needsRefresh && isOnline && !isTokenRefreshing) {
+                // Token is valid but expiring soon
+                return await handleTokenRefresh();
+            }
+
+            return authStatus.isValid;
+        } catch (error) {
+            console.error('Token check error:', error);
+            await handleInvalidSession();
+            return false;
+        }
+    }, [isOnline, isTokenRefreshing]);
 
     /**
      * Initialize authentication state from persistent storage
@@ -28,34 +59,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const initializeAuth = async () => {
             try {
-                // Parallel fetch of stored authentication data
-                const [storedUser, storedToken, storedRefresh, storedExpiry] = await Promise.all([
-                    AsyncStorage.getItem(USER_DATA_KEY),
-                    AsyncStorage.getItem(AUTH_TOKEN_KEY),
-                    AsyncStorage.getItem(REFRESH_TOKEN_KEY),
-                    AsyncStorage.getItem(TOKEN_EXPIRY_KEY),
-                ]);
+                setIsLoading(true);
 
-                if (storedUser && storedToken && storedRefresh && storedExpiry) {
-                    const userData = JSON.parse(storedUser);
-                    const expiryDate = new Date(storedExpiry);
-
-                    // Update UI with persisted data
+                // Get user data first to update UI quickly
+                const userData = await getCurrentUser();
+                if (userData) {
                     setUser(userData);
-                    setIsAuthenticated(true);
-
-                    // Validate token freshness
-                    if (new Date() < expiryDate) {
-                        setIsLoading(false);
-                    } else if (isOnline) {
-                        // Attempt silent refresh if offline previously
-                        await handleTokenRefresh();
-                    }
                 }
-                setIsLoading(false);
+
+                // Check token validity
+                const isValid = await checkAndRefreshToken();
+                setIsAuthenticated(isValid);
             } catch (error) {
                 console.error('Auth initialization error:', error);
                 await handleInvalidSession();
+            } finally {
                 setIsLoading(false);
             }
         };
@@ -64,12 +82,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [isOnline]); // Re-initialize when network status changes
 
     /**
+     * Schedule periodic token checks when app is active
+     */
+    useEffect(() => {
+        if (!isAuthenticated || !isOnline) return;
+
+        // Check token every 5 minutes
+        const tokenCheckInterval = setInterval(() => {
+            checkAndRefreshToken();
+        }, 5 * 60 * 1000);
+
+        return () => clearInterval(tokenCheckInterval);
+    }, [isAuthenticated, isOnline, checkAndRefreshToken]);
+
+    /**
      * Handle token refresh with exponential backoff retry strategy
      * @param {number} attempt - Current retry attempt number
-     * @returns {Promise<void>} Refresh operation promise
+     * @returns {Promise<boolean>} Success state of refresh operation
      */
-    const handleTokenRefresh = useCallback(async (attempt = 1) => {
-        if (!isOnline) return;
+    const handleTokenRefresh = useCallback(async (attempt = 1): Promise<boolean> => {
+        if (!isOnline || isTokenRefreshing) return false;
 
         try {
             setIsTokenRefreshing(true);
@@ -80,33 +112,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             // Update authentication state with new tokens
-            setIsTokenRefreshing(false);
-            return tokens;
+            setIsAuthenticated(true);
+
+            // Refresh user data if needed
+            const userData = await getCurrentUser();
+            if (userData) {
+                setUser(userData);
+            }
+
+            return true;
         } catch (error) {
-            if (attempt <= 3) {
+            console.error('Token refresh error:', error);
+
+            if (attempt <= 3 && isOnline) {
                 // Exponential backoff with jitter
-                const delay = Math.min(1000 * 2 ** attempt, 30000);
-                setTimeout(() => handleTokenRefresh(attempt + 1), delay);
+                const delay = Math.min(1000 * (2 ** attempt) + Math.random() * 1000, 30000);
+
+                return new Promise(resolve => {
+                    setTimeout(async () => {
+                        const success = await handleTokenRefresh(attempt + 1);
+                        resolve(success);
+                    }, delay);
+                });
             } else {
                 // Final cleanup after failed refresh attempts
                 await handleInvalidSession();
                 showModal('Session expired. Please login again.');
+                return false;
             }
         } finally {
             setIsTokenRefreshing(false);
         }
-    }, [isOnline, showModal]);
+    }, [isOnline, showModal, isTokenRefreshing]);
 
     /**
      * Clear all authentication data and reset state
      */
     const handleInvalidSession = async () => {
-        await AsyncStorage.multiRemove([
-            AUTH_TOKEN_KEY,
-            REFRESH_TOKEN_KEY,
-            USER_DATA_KEY,
-            TOKEN_EXPIRY_KEY
-        ]);
+        await logoutUser();
         setIsAuthenticated(false);
         setUser(null);
     };
@@ -123,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         try {
+            setIsLoading(true);
             const response = await loginUser({ email, password });
 
             if (response.status !== 'success' || !response.data) {
@@ -142,6 +186,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 success: false,
                 message: error.message || 'Authentication failed'
             };
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -149,11 +195,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
      * Secure user logout handler
      */
     const logout = async () => {
+        setIsLoading(true);
         try {
             await logoutUser();
-            await handleInvalidSession();
+            setIsAuthenticated(false);
+            setUser(null);
         } catch (error) {
             console.error('Logout error:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
