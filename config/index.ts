@@ -1,1 +1,0 @@
-export const API_URL = "http://https://nodebackend.salmontree-886fdcec.westus2.azurecontainerapps.io";

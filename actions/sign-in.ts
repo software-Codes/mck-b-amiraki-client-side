@@ -14,7 +14,7 @@ const API_BASE_URL =
 // Create axios instance with consistent configuration
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
-    timeout: 15000,
+    timeout: 10000,
     headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
